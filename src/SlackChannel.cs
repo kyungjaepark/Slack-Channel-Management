@@ -141,7 +141,7 @@ namespace SlackChannelManangement
             return wc;
         }
 
-        public void ArchivePublicChannels(String slackToken)
+        public void ArchivePublicChannels(String slackToken, bool byChannelId = true)
         {
             Console.WriteLine("TODO");
         }

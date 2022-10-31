@@ -14,8 +14,9 @@ Slack User Token : {XXXXXXXXXXXXX}
 
 === Slack Channel Management Tool ===
 [1] Export public channel list
-[2] Archive specific public channels
-[3] Exit
+[2] Archive specific public channels (by channel name)
+[3] Archive specific public channels (by channel ID)
+[4] Exit
 Enter Selection Number : {1}
 
 Enter output report file path : {output.csv}
@@ -28,13 +29,35 @@ Done.
 
 ### 여러 채널을 한 번에 아카이빙하기
 
+먼저, 다음과 같이 채널 이름을 담은 텍스트 파일을 만듭니다.
+```
+misc
+programming-server
+programming-server-old
+tech-
+tech
+```
+
+이후 2번 메뉴를 선택하여 아카이브를 하고 나면 다음과 같은 결과를 얻습니다.
+
+```
+Channel ID, Channel Name, Result
+Cxxxxxxxx, misc, Archived
+Cxxxxxxxx, programming-server, Archived
+Cxxxxxxxx, programming-server-old, Already archived
+Cxxxxxxxx, tech-, Public channel not found
+Cxxxxxxxx, tech, Archived
+```
+
+다음과 같이 실행합니다.
 ```
 Slack User Token : {XXXXXXXXXXXXX}
 
 === Slack Channel Management Tool ===
 [1] Export public channel list
-[2] Archive specific public channels
-[3] Exit
+[2] Archive specific public channels (by channel name)
+[3] Archive specific public channels (by channel ID)
+[4] Exit
 Enter Selection Number : {2}
 
 Enter channel list file path : {channel_list.txt}
@@ -44,6 +67,8 @@ Enter archive report file path : {archive_result.csv}
 120/120 channels processed..
 Done.
 ```
+
+만약 채널 이름대신 채널 ID(슬랙 내부 값) 을 이용하고 싶다면, 텍스트 파일에 채널 ID를 기입하고 3번 메뉴를 사용합니다.
 
 ## 앱 설치하고 유저 토큰 얻기
 
