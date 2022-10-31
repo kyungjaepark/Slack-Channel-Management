@@ -2,6 +2,9 @@
 
 이 도구는 슬랙 공개 채널 목록을 추출하고, 여러 채널을 한 번에 아카이빙할 수 있는 도구입니다.
 
+실행을 위해서는 .NET 6 이 필요합니다.
+[https://dotnet.microsoft.com/download]
+
 ## 실행 예
 
 사용자 명령 창 (cmd.exe) 또는 터미널을 열고, src 디렉토리에서 `dotnet run` 으로 실행합니다.
@@ -41,12 +44,12 @@ tech
 이후 2번 메뉴를 선택하여 아카이브를 하고 나면 다음과 같은 결과를 얻습니다.
 
 ```
-Channel ID, Channel Name, Result
-Cxxxxxxxx, misc, Archived
-Cxxxxxxxx, programming-server, Archived
-Cxxxxxxxx, programming-server-old, Already archived
-Cxxxxxxxx, tech-, Public channel not found
-Cxxxxxxxx, tech, Archived
+Channel Name,Result,Channel ID
+misc,Archived,Cxxxxxxxx
+programming-server,Archived,Cxxxxxxxx
+programming-server-old,Non-Archived Public Channel Not Found,Cxxxxxxxx
+tech-,Non-Archived Public Channel Not Found,Cxxxxxxxx
+tech,Archived,Cxxxxxxxx
 ```
 
 다음과 같이 실행합니다.

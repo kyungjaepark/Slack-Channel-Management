@@ -74,11 +74,11 @@ namespace SlackChannelManangement
                 {
                     return wc.DownloadString(url);
                 }
-                catch (WebException wex)
+                catch (WebException ex)
                 {
-                    if ((int)wex.Status != 429)
-                        throw wex;
-                    var retryAfter = Double.Parse(wex.Response.Headers["Retry-After"]);
+                    var retryAfter = GetSlackRetryAfterTime(ex);
+                    if (retryAfter == -1)
+                        throw ex;
                     Console.Error.WriteLine("API reached time limit. wait for " + retryAfter + " seconds..");
                     System.Threading.Thread.Sleep(TimeSpan.FromSeconds(retryAfter));
                 }
@@ -141,9 +141,142 @@ namespace SlackChannelManangement
             return wc;
         }
 
+        private double GetSlackRetryAfterTime(Exception ex)
+        {
+            try
+            {
+                if (ex is WebException wex)
+                {
+                    if ((int)wex.Status == 429)
+                    {
+                        var retryAfter = Double.Parse(wex?.Response?.Headers["Retry-After"] ?? "");
+                        return retryAfter;
+                    }
+                }
+
+            }
+            catch
+            {
+                return -1;
+            }
+            return -1;
+        }
+
         public void ArchivePublicChannels(String slackToken, bool byChannelId = true)
         {
-            Console.WriteLine("TODO");
+            Console.Write("Enter channel list file path : ");
+            var channelListFilePath = Console.ReadLine().Trim();
+            List<String> candidateList = new List<string>();
+            try
+            {
+                var srcLines = File.ReadAllLines(channelListFilePath);
+                candidateList.AddRange(
+                    srcLines.Select(r => r.Trim()).Where(r => String.IsNullOrEmpty(r) == false)
+                );
+            }
+            catch
+            {
+                Console.Error.WriteLine("Error : error reading file - " + channelListFilePath);
+                return;
+            }
+
+            if (candidateList.Any() == false)
+            {
+                Console.Error.WriteLine("Error : file has empty list - " + channelListFilePath);
+                return;
+            }
+
+            Console.Write("Enter archive report file path : ");
+            var archiveReportFilePath = Console.ReadLine().Trim();
+            using StreamWriter sw = new StreamWriter(archiveReportFilePath);
+            sw.WriteLine("Channel ID, Channel Name, Result");
+            var previousResult = new Dictionary<string, string>();
+
+            var allChannelList = GetPublicChannelList(slackToken);
+            if (allChannelList == null)
+                return;
+
+            var activeChannelList = allChannelList.Where(r => r["is_archived"].GetValue<bool>() == false).ToList();
+            var channelIdToChannelNameMap = activeChannelList.ToDictionary(r => $"{r["id"]}", r => $"{r["name"]}");
+            var channelNameToChannelIdMap = activeChannelList.ToDictionary(r => $"{r["name"]}", r => $"{r["id"]}");
+
+            DateTime nextStatusTime = DateTime.Now;
+            int processedChannelCount = 0;
+            foreach (var candidateChannel in candidateList)
+            {
+                string resultLine = "";
+                if (previousResult.ContainsKey(candidateChannel))
+                {
+                    resultLine = previousResult[candidateChannel];
+                }
+                else
+                {
+                    string channelName = null;
+                    string channelId = null;
+                    string result = null;
+                    if (byChannelId)
+                    {
+                        channelId = candidateChannel;
+                        if (channelIdToChannelNameMap.ContainsKey(channelId))
+                            channelName = channelNameToChannelIdMap[channelId];
+
+                    }
+                    else
+                    {
+                        channelName = candidateChannel;
+                        if (channelNameToChannelIdMap.ContainsKey(channelName))
+                            channelId = channelNameToChannelIdMap[channelName];
+                    }
+
+                    if (channelName == null || channelId == null)
+                    {
+                        result = "Non-Archived Public Channel Not Found";
+                    }
+                    else
+                    {
+                        int retryCount = 3;
+                        while (true)
+                        {
+                            try
+                            {
+                                using var wc = GetNewSlackWebClient(slackToken);
+
+                                var url = $"https://slack.com/api/conversations.archive";
+                                var payload = new JsonObject();
+                                payload["channel"] = channelId;
+                                var archiveResultString = wc.UploadString(url, payload.ToString());
+                                var archiveResult = JsonNode.Parse(archiveResultString);
+                                if (archiveResult["ok"].GetValue<bool>() == true)
+                                    result = "Archived";
+                                else
+                                    result = $"Error : {archiveResult["error"]}";
+                                break;
+                            }
+                            catch (Exception ex)
+                            {
+                                var retryAfter = GetSlackRetryAfterTime(ex);
+                                if (retryAfter == -1 || --retryCount < 0)
+                                {
+                                    result = "Error while archiving channel";
+                                    break;
+                                }
+                                Console.Error.WriteLine("API reached time limit. wait for " + retryAfter + " seconds..");
+                                System.Threading.Thread.Sleep(TimeSpan.FromSeconds(retryAfter));
+                            }
+                        }
+                    }
+                    resultLine = $"{channelName},{result},{channelId}";
+                }
+                sw.WriteLine(resultLine);
+                sw.Flush();
+                previousResult[candidateChannel] = resultLine;
+                processedChannelCount++;
+                if (processedChannelCount == candidateList.Count || nextStatusTime < DateTime.Now)
+                {
+                    Console.WriteLine($"{processedChannelCount} / {candidateList.Count} channels processed..");
+                    nextStatusTime = DateTime.Now.AddSeconds(5);
+                }
+            }
         }
-   }
+    }
 }
