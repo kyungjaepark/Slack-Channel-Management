@@ -7,4 +7,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="KayJay.WebCli" Version="0.0.4" />
+  </ItemGroup>
+
 </Project>
